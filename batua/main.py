@@ -5,8 +5,11 @@ import json
 
 
 class Sikka:
-    def __init__(self, hash_string):
-        self._hash = hash_string
+    def __init__(self, chain):
+        self._sign_chain = []
+    
+    def add_sign(self, sign):
+        self._sign_chain.append(sign)
 
 
 class Batua:
@@ -34,17 +37,17 @@ class Batua:
         assert isinstance(sikka, Sikka)
         transaction_string = '{} {}'.format(sikka._hash, to_public_key).encode()
         transaction_hash = HASH_ALGO(transaction_string)
-
         signature = self.data['sk'].sign(transaction_hash)
-        return Sikka(signature)
+        sikka.add_sign(signature)
+        return sikka
 
     def verify(self, sikka):
         keylist = public_key_list()
-        expected_string = '{} {}'.format(sikka._hash, self.data['vk']).encode()
+        expected_string = '{} {}'.format(sikka._sign_chain[-2], self.data['vk']).encode()
         expected_hash = HASH_ALGO(expected_string)
         prev_owner = None
         for key in keylist:
-            if key.verify(sikka._hash, expected_hash):
+            if key.verify(sikka._sign_chain[-1], expected_hash):
                 prev_owner = key
                 break
         assert prev_owner is not None
