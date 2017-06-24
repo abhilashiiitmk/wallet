@@ -12,7 +12,7 @@ setup(name='batua',
       license='MIT',
       packages=['batua'],
       include_package_data=True,
-      install_requires=['ecdsa'],
+      install_requires=['ecdsa', 'pycrypto'],
       entry_points={'console_scripts': ['batua=batua.cli:main']},
       keywords=['batua'],
       zip_safe=False)
