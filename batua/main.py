@@ -1,7 +1,8 @@
 import os
-from .config import SAVE_PATH, HASH_ALGO
-from .tools import getpair, sync_chain, public_key_list
+from .config import SAVE_PATH, HASH_ALGO, MINING_BATCH_SIZE
+from .tools import getpair, sync_chain, public_key_list, verify_nonce
 import json
+from multiprocessing import Pool
 
 
 class Sikka:
@@ -34,10 +35,13 @@ class Batua:
             data = json.dump(self.data, fl, indent=4)
 
     def send(self, sikka, to_public_key):
-        assert isinstance(sikka, Sikka)
+        assert isinstance(sikka, Sikka), 'not a coin'
+        assert self.verify(sikka), "I cannot spend what I don't have"
+
         transaction_string = '{} {}'.format(sikka._hash, to_public_key).encode()
         transaction_hash = HASH_ALGO(transaction_string)
         signature = self.data['sk'].sign(transaction_hash)
+
         sikka.add_sign(signature)
         return sikka
 
@@ -51,4 +55,28 @@ class Batua:
                 prev_owner = key
                 break
         assert prev_owner is not None
-        return prev_owner s not None
+        return prev_owner is not None
+
+
+class Block:
+    def __init__(self, transfered_coins, previous_block_hash):
+        self.cns = transfered_coins
+        self.pbh = previous_block_hash
+
+    def mine(self):
+        info_to_publish = [coin._sign_chain for coin in self.cns]
+        info_string = str(info_to_publish)
+
+        nonce_counter, usable_nonce = 0, None
+        while True:
+            arguments = [(info_string, self.pbh, nonce)
+                         for nonce in range(nonce_counter, MINING_BATCH_SIZE)]
+            with Pool() as pool:
+                work = pool.imap_unordered(verify_nonce, arguments)
+                for nonce, valid in work:
+                    if valid:
+                        usable_nonce = nonce
+                        break
+            if usable_nonce is None:
+                nonce_counter += MINING_BATCH_SIZE
+        return info_string, self.pbh, nonce
